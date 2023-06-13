@@ -28,7 +28,9 @@ import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import com.google.android.gms.cast.framework.*
+import com.google.mediapipe.examples.gesturerecognizer.MainActivity
 import com.google.mediapipe.examples.gesturerecognizer.R
+import com.google.mediapipe.examples.gesturerecognizer.refplayer.mediaplayer.LocalPlayerActivity
 import com.google.mediapipe.examples.gesturerecognizer.refplayer.queue.ui.QueueListViewActivity
 import com.google.mediapipe.examples.gesturerecognizer.refplayer.settings.CastPreference
 import java.util.concurrent.Executor
@@ -126,6 +128,9 @@ class VideoBrowserActivity : AppCompatActivity() {
             startActivity(intent)
         } else if (item.itemId == R.id.action_show_queue) {
             intent = Intent(this@VideoBrowserActivity, QueueListViewActivity::class.java)
+            startActivity(intent)
+        } else if (item.itemId == R.id.action_gesture) {
+            intent = Intent(this@VideoBrowserActivity, MainActivity::class.java)
             startActivity(intent)
         }
         return true

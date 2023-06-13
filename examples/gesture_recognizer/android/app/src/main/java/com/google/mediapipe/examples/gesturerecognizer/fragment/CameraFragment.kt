@@ -26,16 +26,19 @@ import android.widget.AdapterView
 import android.widget.Toast
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.Navigation
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.gms.cast.framework.CastContext
 import com.google.mediapipe.examples.gesturerecognizer.GestureRecognizerHelper
 import com.google.mediapipe.examples.gesturerecognizer.MainViewModel
 import com.google.mediapipe.examples.gesturerecognizer.R
 import com.google.mediapipe.examples.gesturerecognizer.databinding.FragmentCameraBinding
 import com.google.mediapipe.tasks.vision.core.RunningMode
+import java.lang.Math.abs
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -46,6 +49,13 @@ class CameraFragment : Fragment(),
 
     companion object {
         private const val TAG = "Hand gesture recognizer"
+
+        // NJD - this is lame but i can't get the mute state from the REmoteMediaClient
+        // so i store it here.
+        var mutedOn: Boolean = false
+        var timeSinceLastDetectionMillis: Long = 0L
+        var lastDetectedGesture: String = ""
+        val GESTURE_DEBOUNCE_PERIOD_MILLIS = 2000L
     }
 
     private var _fragmentCameraBinding: FragmentCameraBinding? = null
@@ -356,6 +366,7 @@ class CameraFragment : Fragment(),
     // image height/width to scale and place the landmarks properly through
     // OverlayView. Only one result is expected at a time. If two or more
     // hands are seen in the camera frame, only one will be processed.
+
     override fun onResults(
         resultBundle: GestureRecognizerHelper.ResultBundle
     ) {
@@ -367,6 +378,35 @@ class CameraFragment : Fragment(),
                     gestureRecognizerResultAdapter.updateResults(
                         gestureCategories.first()
                     )
+
+                    val currentGesture = gestureCategories.first().get(0).categoryName()
+                    val now = System.currentTimeMillis()
+                    if (lastDetectedGesture != currentGesture &&
+                            now - timeSinceLastDetectionMillis > GESTURE_DEBOUNCE_PERIOD_MILLIS) {
+                        lastDetectedGesture = currentGesture
+                        timeSinceLastDetectionMillis = now
+
+                        if (currentGesture.equals("Open_Palm")) {
+
+                            System.err.println("*** PALM DETECTED")
+
+                            CastContext.getSharedInstance(
+                                (context)!!,
+                                Executors.newSingleThreadExecutor()
+                            )
+                                .result
+                                .sessionManager
+                                .currentCastSession?.apply {
+                                    if (isConnected) {
+                                        // toggle current value
+                                        mutedOn = !mutedOn
+                                        System.err.println("*** ${if (mutedOn) "muting" else "un-muting"}")
+
+                                        remoteMediaClient?.setStreamMute(mutedOn)
+                                    }
+                                }
+                        }
+                    }
                 } else {
                     gestureRecognizerResultAdapter.updateResults(emptyList())
                 }
