@@ -147,6 +147,7 @@ class CameraFragment : Fragment(),
         // Wait for the views to be properly laid out
         fragmentCameraBinding.viewFinder.post {
             // Set up the camera and its use cases
+            fragmentCameraBinding.viewFinder.visibility = View.INVISIBLE
             setUpCamera()
         }
 
