@@ -31,9 +31,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <include
-        android:id="@+id/bottom_sheet_layout"
-        layout="@layout/info_bottom_sheet" />
+<!--    <include-->
+<!--        android:id="@+id/bottom_sheet_layout"-->
+<!--        layout="@layout/info_bottom_sheet" />-->
 
 <!--    <androidx.recyclerview.widget.RecyclerView-->
 <!--        android:id="@+id/recyclerview_results"-->
