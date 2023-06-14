@@ -26,7 +26,6 @@ import android.widget.AdapterView
 import android.widget.Toast
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -38,7 +37,6 @@ import com.google.mediapipe.examples.gesturerecognizer.MainViewModel
 import com.google.mediapipe.examples.gesturerecognizer.R
 import com.google.mediapipe.examples.gesturerecognizer.databinding.FragmentCameraBinding
 import com.google.mediapipe.tasks.vision.core.RunningMode
-import java.lang.Math.abs
 import java.util.*
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -52,7 +50,8 @@ class CameraFragment : Fragment(),
 
         // NJD - this is lame but i can't get the mute state from the REmoteMediaClient
         // so i store it here.
-        var mutedOn: Boolean = false
+        var pauseOn: Boolean = false
+        var muteOn: Boolean = false
         var timeSinceLastDetectionMillis: Long = 0L
         var lastDetectedGesture: String = ""
         val GESTURE_DEBOUNCE_PERIOD_MILLIS = 2000L
@@ -245,7 +244,7 @@ class CameraFragment : Fragment(),
                     try {
                         gestureRecognizerHelper.currentDelegate = p2
                         updateControlsUi()
-                    } catch(e: UninitializedPropertyAccessException) {
+                    } catch (e: UninitializedPropertyAccessException) {
                         Log.e(TAG, "GestureRecognizerHelper has not been initialized yet.")
 
                     }
@@ -381,31 +380,51 @@ class CameraFragment : Fragment(),
 
                     val currentGesture = gestureCategories.first().get(0).categoryName()
                     val now = System.currentTimeMillis()
-                    if (lastDetectedGesture != currentGesture &&
-                            now - timeSinceLastDetectionMillis > GESTURE_DEBOUNCE_PERIOD_MILLIS) {
+                    if (lastDetectedGesture != currentGesture ||
+                        now - timeSinceLastDetectionMillis > GESTURE_DEBOUNCE_PERIOD_MILLIS
+                    ) {
                         lastDetectedGesture = currentGesture
                         timeSinceLastDetectionMillis = now
 
-                        if (currentGesture.equals("Open_Palm")) {
+                        CastContext.getSharedInstance(
+                            (context)!!,
+                            Executors.newSingleThreadExecutor()
+                        )
+                            .result
+                            .sessionManager
+                            .currentCastSession?.apply {
+                                if (isConnected) {
 
-                            System.err.println("*** PALM DETECTED")
+                                    when (currentGesture) {
 
-                            CastContext.getSharedInstance(
-                                (context)!!,
-                                Executors.newSingleThreadExecutor()
-                            )
-                                .result
-                                .sessionManager
-                                .currentCastSession?.apply {
-                                    if (isConnected) {
-                                        // toggle current value
-                                        mutedOn = !mutedOn
-                                        System.err.println("*** ${if (mutedOn) "muting" else "un-muting"}")
+                                        "Open_Palm" -> {
 
-                                        remoteMediaClient?.setStreamMute(mutedOn)
+                                            System.err.println("*** PALM DETECTED")
+                                            // toggle current value
+                                            pauseOn = !pauseOn
+                                            System.err.println("*** ${if (pauseOn) "pausing" else "un-pausing"}")
+
+                                            if (pauseOn) {
+                                                remoteMediaClient?.pause()
+                                            } else {
+                                                remoteMediaClient?.play()
+                                            }
+                                        }
+
+                                        "Closed_Fist" -> {
+
+                                            System.err.println("*** CLOSED_FIST DETECTED")
+                                            // toggle current value
+                                            muteOn = !muteOn
+                                            System.err.println("*** ${if (muteOn) "muting" else "un-muting"}")
+
+                                            remoteMediaClient?.setStreamMute(muteOn)
+                                        }
                                     }
                                 }
+
                         }
+
                     }
                 } else {
                     gestureRecognizerResultAdapter.updateResults(emptyList())
