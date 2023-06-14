@@ -28,6 +28,7 @@
 
     <com.google.mediapipe.examples.gesturerecognizer.OverlayView
         android:id="@+id/overlay"
+            android:background="@color/black"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
