@@ -136,10 +136,10 @@ class CameraFragment : Fragment(),
     @SuppressLint("MissingPermission")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        with(fragmentCameraBinding.recyclerviewResults) {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter = gestureRecognizerResultAdapter
-        }
+//        with(fragmentCameraBinding.recyclerviewResults) {
+//            layoutManager = LinearLayoutManager(requireContext())
+//            adapter = gestureRecognizerResultAdapter
+//        }
 
         // Initialize our background executor
         backgroundExecutor = Executors.newSingleThreadExecutor()
