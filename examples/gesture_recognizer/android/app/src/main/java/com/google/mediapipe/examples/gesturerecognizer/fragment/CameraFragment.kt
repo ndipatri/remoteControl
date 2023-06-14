@@ -26,16 +26,20 @@ import android.widget.AdapterView
 import android.widget.Toast
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.core.content.ContentProviderCompat.requireContext
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.Navigation
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.gms.cast.framework.CastContext
+import com.google.android.gms.cast.framework.media.RemoteMediaClient
+import com.google.android.gms.cast.framework.media.RemoteMediaClient.Callback
 import com.google.mediapipe.examples.gesturerecognizer.GestureRecognizerHelper
 import com.google.mediapipe.examples.gesturerecognizer.MainViewModel
 import com.google.mediapipe.examples.gesturerecognizer.R
 import com.google.mediapipe.examples.gesturerecognizer.databinding.FragmentCameraBinding
+import com.google.mediapipe.examples.gesturerecognizer.fragment.CameraFragment.Companion.commandPending
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import java.util.*
 import java.util.concurrent.ExecutorService
@@ -50,8 +54,10 @@ class CameraFragment : Fragment(),
 
         // NJD - this is lame but i can't get the mute state from the REmoteMediaClient
         // so i store it here.
+
         var pauseOn: Boolean = false
         var muteOn: Boolean = false
+        var commandPending: Boolean = false
         var timeSinceLastDetectionMillis: Long = 0L
         var lastDetectedGesture: String = ""
         val GESTURE_DEBOUNCE_PERIOD_MILLIS = 2000L
@@ -375,16 +381,21 @@ class CameraFragment : Fragment(),
             if (_fragmentCameraBinding != null) {
                 // Show result of recognized gesture
                 val gestureCategories = resultBundle.results.first().gestures()
+
                 if (gestureCategories.isNotEmpty()) {
-                    gestureRecognizerResultAdapter.updateResults(
-                        gestureCategories.first()
-                    )
 
                     val currentGesture = gestureCategories.first().get(0).categoryName()
                     val now = System.currentTimeMillis()
-                    if (lastDetectedGesture != currentGesture ||
-                        now - timeSinceLastDetectionMillis > GESTURE_DEBOUNCE_PERIOD_MILLIS
+
+                    if (!commandPending &&
+                        (lastDetectedGesture != currentGesture ||
+                        now - timeSinceLastDetectionMillis > GESTURE_DEBOUNCE_PERIOD_MILLIS)
                     ) {
+
+                        gestureRecognizerResultAdapter.updateResults(
+                            gestureCategories.first()
+                        )
+
                         lastDetectedGesture = currentGesture
                         timeSinceLastDetectionMillis = now
 
@@ -397,19 +408,30 @@ class CameraFragment : Fragment(),
                             .currentCastSession?.apply {
                                 if (isConnected) {
 
-                                    when (currentGesture) {
+                                    var actionDescription: String = ""
 
+                                    when (currentGesture) {
                                         "Open_Palm" -> {
 
                                             System.err.println("*** PALM DETECTED")
                                             // toggle current value
                                             pauseOn = !pauseOn
-                                            System.err.println("*** ${if (pauseOn) "pausing" else "un-pausing"}")
 
-                                            if (pauseOn) {
-                                                remoteMediaClient?.pause()
-                                            } else {
-                                                remoteMediaClient?.play()
+                                            actionDescription =
+                                                if (pauseOn) "pausing" else "un-pausing"
+
+                                            System.err.println("*** ${actionDescription}")
+
+                                            remoteMediaClient?.apply {
+                                                if (pauseOn) {
+                                                    remoteMediaClient?.pause()
+                                                } else {
+                                                    remoteMediaClient?.play()
+                                                    // we also unmute...
+                                                    muteOn = false
+                                                    setStreamMute(muteOn)
+                                                }
+                                                listenForAcknoweldgement(this)
                                             }
                                         }
 
@@ -418,35 +440,60 @@ class CameraFragment : Fragment(),
                                             System.err.println("*** CLOSED_FIST DETECTED")
                                             // toggle current value
                                             muteOn = !muteOn
-                                            System.err.println("*** ${if (muteOn) "muting" else "un-muting"}")
 
-                                            remoteMediaClient?.setStreamMute(muteOn)
+                                            actionDescription =
+                                                if (muteOn) "muting" else "un-muting"
+
+                                            System.err.println("*** ${actionDescription}")
+
+                                            remoteMediaClient?.apply {
+                                                setStreamMute(muteOn)
+                                                listenForAcknoweldgement(this)
+                                            }
                                         }
+                                    }
+
+                                    if (currentGesture != "None") {
+                                        Toast.makeText(
+                                            activity,
+                                            "$currentGesture, $actionDescription",
+                                            Toast.LENGTH_SHORT
+                                        ).show();
                                     }
                                 }
 
-                        }
+                            }
 
+                    } else {
+                        gestureRecognizerResultAdapter.updateResults(emptyList())
                     }
-                } else {
-                    gestureRecognizerResultAdapter.updateResults(emptyList())
                 }
+            }
+        }
 
 //                fragmentCameraBinding.bottomSheetLayout.inferenceTimeVal.text =
 //                    String.format("%d ms", resultBundle.inferenceTime)
 
-                // Pass necessary information to OverlayView for drawing on the canvas
-                fragmentCameraBinding.overlay.setResults(
-                    resultBundle.results.first(),
-                    resultBundle.inputImageHeight,
-                    resultBundle.inputImageWidth,
-                    RunningMode.LIVE_STREAM
-                )
+        // Pass necessary information to OverlayView for drawing on the canvas
+        fragmentCameraBinding.overlay.setResults(
+            resultBundle.results.first(),
+            resultBundle.inputImageHeight,
+            resultBundle.inputImageWidth,
+            RunningMode.LIVE_STREAM
+        )
 
-                // Force a redraw
-                fragmentCameraBinding.overlay.invalidate()
+        // Force a redraw
+        fragmentCameraBinding.overlay.invalidate()
+    }
+
+    private fun listenForAcknoweldgement(client: RemoteMediaClient) {
+        commandPending = true
+        client.registerCallback(object : Callback() {
+            override fun onStatusUpdated() {
+                commandPending = false
+                //System.err.println("*** Callback: Status Updated")
             }
-        }
+        })
     }
 
     override fun onError(error: String, errorCode: Int) {
