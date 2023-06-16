@@ -16,6 +16,7 @@
 package com.google.mediapipe.examples.gesturerecognizer.fragment
 
 import android.annotation.SuppressLint
+import android.app.ProgressDialog.show
 import android.content.res.Configuration
 import android.os.Bundle
 import android.util.Log
@@ -454,11 +455,11 @@ class CameraFragment : Fragment(),
                                     }
 
                                     if (currentGesture != "None") {
-                                        Toast.makeText(
+                                        val toast = Toast.makeText(
                                             activity,
                                             "$currentGesture, $actionDescription",
                                             Toast.LENGTH_SHORT
-                                        ).show();
+                                        )
                                     }
                                 }
 
