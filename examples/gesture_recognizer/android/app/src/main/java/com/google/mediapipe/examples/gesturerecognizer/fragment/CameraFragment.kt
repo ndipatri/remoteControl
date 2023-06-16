@@ -53,15 +53,14 @@ class CameraFragment : Fragment(),
     companion object {
         private const val TAG = "Hand gesture recognizer"
 
-        // NJD - this is lame but i can't get the mute state from the REmoteMediaClient
-        // so i store it here.
+        // NJD TODO - global state sucks but this is a labweek project so there.
 
         var pauseOn: Boolean = false
         var muteOn: Boolean = false
         var commandPending: Boolean = false
         var timeSinceLastDetectionMillis: Long = 0L
         var lastDetectedGesture: String = ""
-        val GESTURE_DEBOUNCE_PERIOD_MILLIS = 2000L
+        val GESTURE_DEBOUNCE_PERIOD_MILLIS = 3000L
     }
 
     private var _fragmentCameraBinding: FragmentCameraBinding? = null
@@ -421,9 +420,9 @@ class CameraFragment : Fragment(),
                                             actionDescription =
                                                 if (pauseOn) "pausing" else "un-pausing"
 
-                                            System.err.println("*** ${actionDescription}")
-
                                             remoteMediaClient?.apply {
+                                                listenForAcknoweldgement(this)
+                                                System.err.println("*** ${actionDescription}")
                                                 if (pauseOn) {
                                                     remoteMediaClient?.pause()
                                                 } else {
@@ -432,7 +431,6 @@ class CameraFragment : Fragment(),
                                                     muteOn = false
                                                     setStreamMute(muteOn)
                                                 }
-                                                listenForAcknoweldgement(this)
                                             }
                                         }
 
@@ -448,18 +446,19 @@ class CameraFragment : Fragment(),
                                             System.err.println("*** ${actionDescription}")
 
                                             remoteMediaClient?.apply {
-                                                setStreamMute(muteOn)
                                                 listenForAcknoweldgement(this)
+                                                System.err.println("*** ${actionDescription}")
+                                                setStreamMute(muteOn)
                                             }
                                         }
                                     }
 
                                     if (currentGesture != "None") {
-                                        val toast = Toast.makeText(
+                                        Toast.makeText(
                                             activity,
                                             "$currentGesture, $actionDescription",
                                             Toast.LENGTH_SHORT
-                                        )
+                                        ).show()
                                     }
                                 }
 
@@ -489,10 +488,12 @@ class CameraFragment : Fragment(),
 
     private fun listenForAcknoweldgement(client: RemoteMediaClient) {
         commandPending = true
+        System.err.println("*** Callback: Registered")
         client.registerCallback(object : Callback() {
             override fun onStatusUpdated() {
                 commandPending = false
-                //System.err.println("*** Callback: Status Updated")
+                client.unregisterCallback(this)
+                System.err.println("*** Callback: Status Updated and unregistered")
             }
         })
     }
