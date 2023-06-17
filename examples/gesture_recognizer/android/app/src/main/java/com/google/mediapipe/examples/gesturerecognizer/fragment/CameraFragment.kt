@@ -60,7 +60,7 @@ class CameraFragment : Fragment(),
         var commandPending: Boolean = false
         var timeSinceLastDetectionMillis: Long = 0L
         var lastDetectedGesture: String = ""
-        val GESTURE_DEBOUNCE_PERIOD_MILLIS = 3000L
+        val GESTURE_DEBOUNCE_PERIOD_MILLIS = 2000L
     }
 
     private var _fragmentCameraBinding: FragmentCameraBinding? = null
