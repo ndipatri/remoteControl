@@ -385,12 +385,18 @@ class CameraFragment : Fragment(),
                 if (gestureCategories.isNotEmpty()) {
 
                     val currentGesture = gestureCategories.first().get(0).categoryName()
+
                     val now = System.currentTimeMillis()
 
-                    if (!commandPending &&
+                    if (!currentGesture.equals("None") &&
+                        !currentGesture.equals("Closed_Fist") &&
+                        !commandPending &&
                         (lastDetectedGesture != currentGesture ||
                         now - timeSinceLastDetectionMillis > GESTURE_DEBOUNCE_PERIOD_MILLIS)
                     ) {
+                        System.err.println("*** time: ${now - timeSinceLastDetectionMillis}")
+                        System.err.println("*** lastGesture: ${lastDetectedGesture}")
+                        System.err.println("*** commandPending: ${commandPending}")
 
                         gestureRecognizerResultAdapter.updateResults(
                             gestureCategories.first()
@@ -434,7 +440,7 @@ class CameraFragment : Fragment(),
                                             }
                                         }
 
-                                        "Closed_Fist" -> {
+                                        "Thumb_Up" -> {
 
                                             System.err.println("*** CLOSED_FIST DETECTED")
                                             // toggle current value
