@@ -385,6 +385,7 @@ class CameraFragment : Fragment(),
                 if (gestureCategories.isNotEmpty()) {
 
                     val currentGesture = gestureCategories.first().get(0).categoryName()
+                    System.err.println("*** gesture queue size: ${gestureCategories.size}")
 
                     val now = System.currentTimeMillis()
 
